@@ -1,0 +1,135 @@
+---
+title: "Reproducable Research Week2 Assignment"
+author: "Veera"
+date: "August 16, 2018"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# Reproducable Research Week1 Assignment 
+***
+##Synospsis
+***
+ Based on the data from a personal activity monitoring device, adressing the below four questions
+ 
+1. What is mean total number of steps taken per day?
+  + Calculate the total number of steps taken per day
+  + If you do not understand the difference between a histogram and a barplot, research the difference    between them. Make a histogram of the total number of steps taken each day
+  + Calculate and report the mean and median of the total number of steps taken per day
+2. What is the average daily activity pattern?
+  + Make a time series plot (i.e. \color{red}{\verb|type = "l"|}type="l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+  + Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+  
+Download data from [here](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip) and save data into one folder and set that  same folder as working directory.
+
+# Load the data and see the Summary
+***
+```{r}
+setwd(choose.dir())
+Activity_data <- read.csv("activity.csv")
+summary(Activity_data)
+```
+
+# Data Cleanup 
+***
+```{r}
+Activity_data_set<-na.omit(Activity_data)
+Activity_data_set$date<-as.Date(as.character(Activity_data_set$date))
+```
+
+# 1.What is mean total number of steps taken per day?
+***
+## 1.1 Calculate the total number of steps taken per day
+```{r}
+library(dplyr)
+day_Activity_data<-Activity_data_set %>%
+    group_by(date)  %>%
+    summarise(total_steps=sum(steps,na.rm=TRUE))
+
+```
+First 10 Records are 
+```{r}
+head(day_Activity_data,10)
+```
+## 1.2 Histogram of the total number of steps taken each day
+```{r}
+library(plotly)
+p <- plot_ly(x = day_Activity_data$total_steps , type = "histogram")
+p
+```
+
+## 1.3 Calculate and report the mean and median of the total number of steps taken per day
+```{r}
+mean_steps<-paste('Mean of total steps per day is mean_steps is ',mean(day_Activity_data$total_steps))
+mean_steps
+median_steps<-paste('Median of total steps per day is mean_steps is  ',median(day_Activity_data$total_steps))
+median_steps
+```
+#2. What is the average daily activity pattern?
+***
+##2.1 Time Series Plot
+```{r}
+
+interval_average <- Activity_data %>% group_by(interval) %>% summarise(average = mean(steps,na.rm = TRUE))
+
+p <- plot_ly(x = ~interval_average$interval, y = ~interval_average$average, mode = 'lines', text ="Average Daily Activity Pattern" )
+p
+
+```
+
+##2.2 Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+```{r}
+maxIntervalsteps <- Activity_data[which.max(Activity_data$steps),]
+maxIntervalsteps
+```
+
+
+#Imputing Missing Values 
+```{r}
+total_missed_data<-sum(rowSums(is.na(Activity_data)))
+paste(total_missed_data,"records data is null")
+```
+
+##1.Strategy to fill missing vaues with mean
+```{r}
+mean_steps<-mean(Activity_data$steps,na.rm = TRUE)
+
+```
+##2.Strategy to fill missing vaues is Mean
+```{r}
+
+Activity_data[is.na(Activity_data$steps),"steps"]<-mean_steps
+```
+##3.Histogram After Impute
+```{r}
+library(plotly)
+day_Activity_data_after_impute<-Activity_data %>%
+    group_by(date)  %>%
+    summarise(total_steps=sum(steps,na.rm=TRUE))
+    
+p <- plot_ly(x = day_Activity_data_after_impute$total_steps , type = "histogram")
+p
+```
+
+#4.Are there differences in activity patterns between weekdays and weekends?
+```{r}
+
+Activity_data2<-Activity_data
+Activity_data2$day<-weekdays(as.Date(Activity_data2$date))
+Activity_data2$weektype <-"WD"
+Activity_data2[Activity_data2$day %in% c('Sunday','Saturday'),"weektype" ]<- "WE"
+interval_average2 <- Activity_data2 %>% group_by(interval,weektype) %>% summarise(average = mean(steps,na.rm = TRUE))
+week_day_count<-interval_average2[interval_average2$weektype=="WD",]
+week_end_count<-interval_average2[interval_average2$weektype=="WE",]
+p <- plot_ly(week_day_count , x = ~interval, y = ~average, name = 'trace 0',  mode = 'scatter',text="Week Day Activity Report", line = list(color = 'red' ) )
+q <- plot_ly(week_end_count , x = ~interval, y = ~average, name = 'trace 0',  mode = 'scatter' ,text="Week End Activity Report",line = list(color = 'orange' )) 
+par(mfrow=c(1,2)) 
+p
+q
+
+
+
+```
+
